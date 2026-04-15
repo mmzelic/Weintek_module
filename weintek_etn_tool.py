@@ -535,7 +535,7 @@ def main():
         border_style="cyan"
     ))
 
-    ip = Prompt.ask("Enter iR-ETN IP address", default="192.168.0.212")
+    ip = Prompt.ask("Enter iR-ETN IP address", default="192.168.11.199")
     port = int(Prompt.ask("Modbus TCP port", default="502"))
 
     console.print(f"\n[dim]Connecting to {ip}:{port}...[/dim]")
