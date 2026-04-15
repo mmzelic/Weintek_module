@@ -11,14 +11,15 @@ A cross-platform (Windows & Linux) terminal-based replacement for Weintek's **Ea
 
 ### Python dependencies
 
+The script will **automatically install** the correct versions of all dependencies when first run. No manual pip install is needed.
+
+If you prefer to install manually:
+
 ```bash
-pip install rich pymodbus==3.5.4
+pip install pymodbus==3.5.4 rich
 ```
 
-> **Important:** This tool requires **pymodbus exactly 3.5.4**. Newer versions (3.6+) changed the API in breaking ways. If you have a different version installed, force-reinstall it:
-> ```bash
-> pip install pymodbus==3.5.4 --force-reinstall
-> ```
+> **Important:** This tool requires **pymodbus exactly 3.5.4**. Newer versions changed the API in breaking ways. The auto-install will force-reinstall the correct version if a different one is detected.
 
 ---
 
