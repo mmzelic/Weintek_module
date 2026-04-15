@@ -96,10 +96,13 @@ MOD_REG_SIZE     = 500
 
 
 # ─── Modbus helpers ──────────────────────────────────────────────────────────
+SLAVE_ID = 1  # iR-ETN Modbus slave ID
+
+
 def read_regs(client: ModbusTcpClient, addr: int, count: int = 1) -> Optional[list]:
     """Read holding registers. Returns list of values or None on error."""
     try:
-        resp = client.read_holding_registers(addr, count)
+        resp = client.read_holding_registers(addr, count, slave=SLAVE_ID)
         if resp.isError():
             return None
         return resp.registers
@@ -110,7 +113,7 @@ def read_regs(client: ModbusTcpClient, addr: int, count: int = 1) -> Optional[li
 def write_reg(client: ModbusTcpClient, addr: int, value: int) -> bool:
     """Write single holding register. Returns True on success."""
     try:
-        resp = client.write_register(addr, value)
+        resp = client.write_register(addr, value, slave=SLAVE_ID)
         return not resp.isError()
     except Exception:
         return False
@@ -481,7 +484,7 @@ def configure_digital_module(client: ModbusTcpClient, mod: dict):
             bit_addr = (mod["do_start"] or 0) + ch
             if Confirm.ask(f"Write {'ON' if val=='1' else 'OFF'} to DO channel {ch} (bit addr {bit_addr})?"):
                 try:
-                    resp = client.write_coil(bit_addr, val == "1")
+                    resp = client.write_coil(bit_addr, val == "1", slave=SLAVE_ID)
                     ok = not resp.isError()
                 except Exception:
                     ok = False
