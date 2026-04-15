@@ -2,8 +2,33 @@
 """
 Weintek iR-ETN Remote I/O Configuration Tool
 Cross-platform (Windows/Linux) replacement for EasyRemoteIO
-Requires: pip install pymodbus rich
+
+Install dependencies:
+    pip install pymodbus==3.5.4 rich
 """
+
+import subprocess
+
+# Auto-install correct dependencies if missing or wrong version
+def _ensure_deps():
+    required = {"pymodbus": "3.5.4", "rich": None}
+    for pkg, version in required.items():
+        spec = f"{pkg}=={version}" if version else pkg
+        try:
+            import importlib
+            mod = importlib.import_module(pkg)
+            if version and getattr(mod, "__version__", None) != version:
+                print(f"[setup] {pkg} version mismatch (need {version}, got {mod.__version__}). Reinstalling...")
+                subprocess.check_call(
+                    [__import__("sys").executable, "-m", "pip", "install", spec, "--force-reinstall", "-q"]
+                )
+        except ImportError:
+            print(f"[setup] Installing {spec}...")
+            subprocess.check_call(
+                [__import__("sys").executable, "-m", "pip", "install", spec, "-q"]
+            )
+
+_ensure_deps()
 
 import sys
 import time
@@ -13,7 +38,7 @@ try:
     from pymodbus.client import ModbusTcpClient
     from pymodbus.exceptions import ModbusException
 except ImportError:
-    print("ERROR: pymodbus not installed. Run: pip install pymodbus")
+    print("ERROR: pymodbus failed to install. Run manually: pip install pymodbus==3.5.4")
     sys.exit(1)
 
 try:
@@ -96,13 +121,13 @@ MOD_REG_SIZE     = 500
 
 
 # ─── Modbus helpers ──────────────────────────────────────────────────────────
-SLAVE_ID = 1  # iR-ETN Modbus slave ID
+SLAVE_ID = 1  # iR-ETN Modbus unit/slave ID
 
 
 def read_regs(client: ModbusTcpClient, addr: int, count: int = 1) -> Optional[list]:
-    """Read holding registers. Returns list of values or None on error."""
+    """Read holding registers. Passes unit ID as positional arg for pymodbus 3.13+ compat."""
     try:
-        resp = client.read_holding_registers(addr, count, slave=SLAVE_ID)
+        resp = client.read_holding_registers(addr, count, SLAVE_ID)
         if resp.isError():
             return None
         return resp.registers
@@ -111,9 +136,9 @@ def read_regs(client: ModbusTcpClient, addr: int, count: int = 1) -> Optional[li
 
 
 def write_reg(client: ModbusTcpClient, addr: int, value: int) -> bool:
-    """Write single holding register. Returns True on success."""
+    """Write single holding register. Passes unit ID as positional arg for pymodbus 3.13+ compat."""
     try:
-        resp = client.write_register(addr, value, slave=SLAVE_ID)
+        resp = client.write_register(addr, value, SLAVE_ID)
         return not resp.isError()
     except Exception:
         return False
@@ -238,10 +263,10 @@ def print_io_address_map(system: dict):
     tbl = Table(title="I/O Address Map (Modbus)", box=box.SIMPLE_HEAVY, show_lines=True)
     tbl.add_column("Slot", justify="center", style="yellow")
     tbl.add_column("Module")
-    tbl.add_column("DI bits (dec)")
-    tbl.add_column("DO bits (dec)")
-    tbl.add_column("AI words (dec)")
-    tbl.add_column("AO words (dec)")
+    tbl.add_column("DI bits (dec)\n[dim]Read: FC02[/dim]")
+    tbl.add_column("DO bits (dec)\n[dim]Read: FC01  Write: FC05/15[/dim]")
+    tbl.add_column("AI words (dec)\n[dim]Read: FC03/04[/dim]")
+    tbl.add_column("AO words (dec)\n[dim]Read: FC03  Write: FC06/16[/dim]")
 
     for m in system["modules"]:
         def fmt_range(start, count):
@@ -484,7 +509,7 @@ def configure_digital_module(client: ModbusTcpClient, mod: dict):
             bit_addr = (mod["do_start"] or 0) + ch
             if Confirm.ask(f"Write {'ON' if val=='1' else 'OFF'} to DO channel {ch} (bit addr {bit_addr})?"):
                 try:
-                    resp = client.write_coil(bit_addr, val == "1", slave=SLAVE_ID)
+                    resp = client.write_coil(bit_addr, val == "1", SLAVE_ID)
                     ok = not resp.isError()
                 except Exception:
                     ok = False
@@ -535,7 +560,7 @@ def main():
         border_style="cyan"
     ))
 
-    ip = Prompt.ask("Enter iR-ETN IP address", default="192.168.0.212")
+    ip = Prompt.ask("Enter iR-ETN IP address", default="192.168.11.199")
     port = int(Prompt.ask("Modbus TCP port", default="502"))
 
     console.print(f"\n[dim]Connecting to {ip}:{port}...[/dim]")
